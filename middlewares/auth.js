@@ -1,0 +1,43 @@
+const jwt = require("jsonwebtoken");
+const UserModel = require("../models/user");
+const httpStatus = require("../utils/httpStatus");
+
+const auth = async (req, res, next) => {
+    try {
+        if (req.headers.authorization) {
+            let authorization = req.headers.authorization.split(' ')[1], decoded;
+            try {
+                decoded = jwt.verify(authorization, process.env.JWT_SECRET);
+            } catch (e) {
+                return res.status(httpStatus.UNAUTHORIZED).json({
+                    success: false,
+                    message: 'unauthorized'
+                });
+            }
+            const userId = decoded.id;
+            let user;
+            try {
+                user = await UserModel.findById(userId);
+                if (user == null) {
+                    return res.status(httpStatus.UNAUTHORIZED).json({
+                        message: "UNAUTHORIZED"
+                    });
+                }
+            } catch (error) {
+                return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({message: error?.message});
+            }
+
+            req.userId = userId;
+            next();
+        } else {
+            return res.status(httpStatus.UNAUTHORIZED).json({
+                success: false,
+                message: 'unauthorized'
+            });
+        }
+    } catch (error) {
+        return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({message: error?.message});
+    }
+};
+
+module.exports = auth;
